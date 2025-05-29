@@ -14,7 +14,7 @@
 
 ## 💡 Solutions / Learnings:
 - Basic cyber security fondumentals
-- KFC and the diamond model
+- UKC and the diamond model
 
 ## 📌 Plan for Tomorrow:
 - TryHackMe: `Pre secrity - all of "network Fundamentals" modules`
