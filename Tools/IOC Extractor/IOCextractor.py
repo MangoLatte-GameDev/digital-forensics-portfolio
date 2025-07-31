@@ -15,8 +15,8 @@ from colorama import init, Fore, Style
 init()
 
 # === CONFIG ===
-VIRUSTOTAL_API_KEY = "..."
-ABUSEIPDB_API_KEY = "..."
+VIRUSTOTAL_API_KEY = ""
+ABUSEIPDB_API_KEY = ""
 SCAN_DIRS = [
     os.path.expandvars(r"%USERPROFILE%\\AppData\\Local\\Logs"),
     r"C:\\Users",
@@ -106,32 +106,62 @@ def is_internal_ip(ip):
         return True
     
 
+# === VirusTotal API ===
+def check_virustotal(ioc, ioc_type="ip"):
+    headers = {"x-apikey": VIRUSTOTAL_API_KEY}
+
+    if ioc_type=="ip":
+        url = f"https://www.virustotal.com/api/v3/ip_addresses/{ioc}"
+    elif ioc_type == "domain":
+        url = f"https://www.virustotal.com/api/v3/domains/{ioc}"
+    elif ioc_type == "file":
+        url = f"https://www.virustotal.com/api/v3/files/{ioc}"
+    else:
+        print(f"Unknown IOC type: {ioc_type}")
+        return None
+    
+    try:
+        response = requests.get(url, headers=headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"{Fore.YELLOW}[VT] Warning: {response.status_code} for {ioc}{Style.RESET_ALL}")
+            return None
+    except requests.RequestException as e:
+        print(f"{Fore.RED}[VT] Error: {str(e)}{Style.RESET_ALL}")
+        return None
+        
+# === AbuseIPDB API ===
+def check_abuseipdb(ip):
+    url = "https://api.abuseipdb.com/api/v2/check"
+    headers = {
+        "Key": ABUSEIPDB_API_KEY,
+        "Accept": "application/json"
+    }
+    params = {"ipAddress": ip, "maxAgeInDays": "30"}
+    try:
+        response = requests.get(url, headers=headers, params=params, timeout=10)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            print(f"{Fore.YELLOW}[ABUSEIPDB] Warning: {response.status_code} for {ip}{Style.RESET_ALL}")
+            return None
+    except requests.RequestException as e:
+        print (f"{Fore.RED}[ABUSEIPDB] Error: {str(e)}{Style.RESET_ALL}")
+        return None
+    
+
+def test_api_queries():
+    test_ip = "8.8.8.8"  # or something more suspicious
+    print(Fore.CYAN + f"[TEST] VirusTotal on {test_ip}:" + Style.RESET_ALL)
+    vt_result = check_virustotal(test_ip, ioc_type="ip")
+    print(json.dumps(vt_result, indent=2) if vt_result else "No data")
+
+    print(Fore.CYAN + f"[TEST] AbuseIPDB on {test_ip}:" + Style.RESET_ALL)
+    abuse_result = check_abuseipdb(test_ip)
+    print(json.dumps(abuse_result, indent=2) if abuse_result else "No data")
+
 
 # === Test Runner ===
 if __name__ == "__main__":
-    print(Fore.CYAN + "[TEST] Running file I/O tests..." + Style.RESET_ALL)
-
-    sample_json = {"ips": ["8.8.8.8", "1.1.1.1"], "status": "test"}
-    sample_txt = ["line one", "line two", "line three"]
-    sample_csv = [["header1", "header2"], ["row1", "row2"], ["row3a", "row3b"]]
-
-    # Save
-    save_jason_file(json_path, sample_json)
-    save_txt_file(txt_path, sample_txt)
-    save_csv_file(csv_path, sample_csv)
-
-    # Load
-    loaded_json = load_jason_file(json_path)
-    loaded_txt = load_txt_file(txt_path)
-    loaded_csv = load_csv_file(csv_path)
-
-    # Verify
-    print("Loaded JSON:", loaded_json)
-    print("Loaded TXT:", loaded_txt)
-    print("Loaded CSV:", loaded_csv)
-
-    assert loaded_json == sample_json, "❌ JSON Mismatch"
-    assert loaded_txt == sample_txt, "❌ TXT Mismatch"
-    assert loaded_csv == sample_csv, "❌ CSV Mismatch"
-
-    print(Fore.GREEN + "[PASS] All file I/O functions working correctly!" + Style.RESET_ALL)
+    test_api_queries()
